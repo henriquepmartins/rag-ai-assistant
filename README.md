@@ -78,15 +78,3 @@ src/
 api.py                 # Aplicação FastAPI
 streamlit_app.py       # Interface web
 ```
-
-## Roteamento de Suporte
-
-Consultas sobre status de entrega são direcionadas automaticamente ao suporte humano:
-
-```
-suporte@emvidros.com.br
-```
-
-## Licença
-
-Proprietário - EM Vidros
