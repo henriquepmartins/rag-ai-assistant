@@ -1,4 +1,4 @@
-"""Script to manually scrape and ingest website content."""
+"""Script manual para scraping e ingestão."""
 
 import asyncio
 import argparse
@@ -6,7 +6,6 @@ import logging
 import sys
 from pathlib import Path
 
-# Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.config import Config
@@ -43,16 +42,13 @@ async def main():
 
     args = parser.parse_args()
 
-    # Initialize vector store
     vector_store = VectorStoreManager()
 
-    # Clear if requested
     if args.clear:
         logger.info("Clearing vector store...")
         vector_store.clear_collection()
         logger.info("Vector store cleared")
 
-    # Scrape website
     logger.info(f"Starting scrape of {args.url}")
     scraper = WebsiteScraper(base_url=args.url, max_pages=args.max_pages)
     scraped_content = await scraper.scrape()
@@ -63,13 +59,11 @@ async def main():
         logger.warning("No content scraped. Exiting.")
         return
 
-    # Ingest into vector store
     logger.info("Ingesting content into vector store...")
     documents_added = vector_store.add_web_content(scraped_content)
 
     logger.info(f"Successfully ingested {documents_added} documents")
 
-    # Show stats
     stats = vector_store.get_stats()
     logger.info(f"Vector store stats: {stats}")
 

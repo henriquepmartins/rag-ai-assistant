@@ -1,8 +1,4 @@
-"""FastAPI backend for EM Vidros RAG AI Assistant.
-
-This module provides the REST API for the EM Vidros AI Assistant,
-including chat endpoints, session management, and system statistics.
-"""
+"""API FastAPI para o Assistente EM Vidros."""
 
 import logging
 import uuid
@@ -21,14 +17,12 @@ from src.vector_store import VectorStoreManager
 from src.document_loader import DocumentLoader
 from src.inngest_functions import inngest_client, inngest_functions
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
-# Global component instances
 rag_engine: Optional[RAGEngine] = None
 session_memory: Optional[SessionMemory] = None
 vector_store: Optional[VectorStoreManager] = None
@@ -36,17 +30,16 @@ vector_store: Optional[VectorStoreManager] = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan handler for startup/shutdown."""
+    """Inicialização e shutdown da aplicação."""
     global rag_engine, session_memory, vector_store
 
     logger.info("Starting up EM Vidros AI Assistant API...")
     Config.ensure_directories()
 
-    # Initialize components
     session_memory = SessionMemory()
     vector_store = VectorStoreManager()
 
-    # Load and index context documents
+    # Carrega e indexa documentos de contexto
     try:
         doc_loader = DocumentLoader()
         documents = doc_loader.load_all()
@@ -64,7 +57,6 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down API...")
 
 
-# Create FastAPI application
 app = FastAPI(
     title="EM Vidros AI Assistant API",
     description="API para o assistente virtual inteligente da EM Vidros",
@@ -72,7 +64,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Configure CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -81,21 +72,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve Inngest functions
 inngest.fast_api.serve(app, inngest_client, inngest_functions)
 
 
-# Pydantic Models
 class ChatRequest(BaseModel):
-    """Chat request model."""
-
-    message: str = Field(..., description="User message")
-    session_id: Optional[str] = Field(None, description="Session ID for continuity")
+    """Request para chat."""
+    message: str = Field(..., description="Mensagem do usuário")
+    session_id: Optional[str] = Field(None, description="ID da sessão")
 
 
 class ChatResponse(BaseModel):
-    """Chat response model."""
-
+    """Response do chat."""
     response: str
     session_id: str
     sources: List[dict] = []
@@ -104,15 +91,13 @@ class ChatResponse(BaseModel):
 
 
 class QueryRequest(BaseModel):
-    """Query request model."""
-
-    question: str = Field(..., description="Question to ask")
-    top_k: int = Field(5, description="Number of sources to retrieve")
+    """Request para query."""
+    question: str = Field(..., description="Pergunta")
+    top_k: int = Field(5, description="Número de fontes")
 
 
 class QueryResponse(BaseModel):
-    """Query response model."""
-
+    """Response da query."""
     response: str
     sources: List[dict] = []
     success: bool
@@ -120,8 +105,7 @@ class QueryResponse(BaseModel):
 
 
 class SessionInfo(BaseModel):
-    """Session information model."""
-
+    """Informações da sessão."""
     session_id: str
     created_at: str
     updated_at: str
@@ -129,8 +113,7 @@ class SessionInfo(BaseModel):
 
 
 class StatsResponse(BaseModel):
-    """System statistics response model."""
-
+    """Estatísticas do sistema."""
     vector_store: dict
     sessions_count: int
     context_files: dict
@@ -138,26 +121,21 @@ class StatsResponse(BaseModel):
 
 
 class ScrapeRequest(BaseModel):
-    """Scrape request model."""
-
+    """Request para scraping."""
     url: Optional[str] = None
     max_pages: Optional[int] = None
 
 
 class ScrapeResponse(BaseModel):
-    """Scrape response model."""
-
+    """Response do scraping."""
     success: bool
     message: str
     event_id: Optional[str] = None
 
 
-# API Endpoints
-
-
 @app.get("/")
 async def root():
-    """Root endpoint with API information."""
+    """Informações da API."""
     return {
         "name": "EM Vidros AI Assistant API",
         "version": "1.0.0",
@@ -168,7 +146,7 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint."""
+    """Health check."""
     return {
         "status": "healthy",
         "vector_store_connected": (
@@ -179,11 +157,7 @@ async def health_check():
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
-    """Chat with the AI assistant.
-
-    This endpoint processes user messages and returns AI responses.
-    It maintains session history and routes support queries appropriately.
-    """
+    """Chat com o assistente."""
     try:
         session_id = request.session_id or str(uuid.uuid4())
         result = rag_engine.chat(message=request.message, session_id=session_id)
@@ -203,7 +177,7 @@ async def chat(request: ChatRequest):
 
 @app.post("/query", response_model=QueryResponse)
 async def query(request: QueryRequest):
-    """Query the knowledge base without chat history."""
+    """Query sem histórico."""
     try:
         result = rag_engine.query(question=request.question, top_k=request.top_k)
 
@@ -221,7 +195,7 @@ async def query(request: QueryRequest):
 
 @app.get("/sessions", response_model=List[SessionInfo])
 async def list_sessions(limit: int = 100):
-    """List all chat sessions."""
+    """Lista sessões."""
     try:
         sessions = session_memory.list_sessions(limit=limit)
 
@@ -246,14 +220,13 @@ async def list_sessions(limit: int = 100):
 
 @app.get("/sessions/{session_id}")
 async def get_session(session_id: str):
-    """Get session details and chat history."""
+    """Detalhes da sessão."""
     try:
         session = session_memory.get_session(session_id)
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
 
         messages = session_memory.get_chat_history(session_id)
-
         return {"session": session, "messages": messages}
 
     except HTTPException:
@@ -265,7 +238,7 @@ async def get_session(session_id: str):
 
 @app.delete("/sessions/{session_id}")
 async def delete_session(session_id: str):
-    """Delete a chat session."""
+    """Remove sessão."""
     try:
         success = session_memory.delete_session(session_id)
         if not success:
@@ -282,12 +255,11 @@ async def delete_session(session_id: str):
 
 @app.get("/stats", response_model=StatsResponse)
 async def get_stats():
-    """Get system statistics."""
+    """Estatísticas do sistema."""
     try:
         sessions = session_memory.list_sessions()
         stats = rag_engine.get_stats()
 
-        # Get context files stats
         doc_loader = DocumentLoader()
         context_stats = doc_loader.get_stats()
 
@@ -305,7 +277,7 @@ async def get_stats():
 
 @app.post("/scrape", response_model=ScrapeResponse)
 async def trigger_scrape(request: ScrapeRequest):
-    """Trigger website scraping via Inngest."""
+    """Dispara scraping via Inngest."""
     try:
         return ScrapeResponse(
             success=True,
@@ -320,7 +292,7 @@ async def trigger_scrape(request: ScrapeRequest):
 
 @app.post("/reload-context")
 async def reload_context():
-    """Reload and reindex context folder documents."""
+    """Recarrega documentos da pasta context."""
     try:
         doc_loader = DocumentLoader()
         documents = doc_loader.load_all()
@@ -346,5 +318,4 @@ async def reload_context():
 
 if __name__ == "__main__":
     import uvicorn
-
     uvicorn.run(app, host="0.0.0.0", port=8000)
