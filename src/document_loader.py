@@ -1,8 +1,4 @@
-"""Document loader for context folder files.
-
-This module handles loading and indexing various document formats
-from the context folder into the vector store.
-"""
+"""Carregamento de documentos da pasta context/."""
 
 import logging
 from pathlib import Path
@@ -17,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class DocumentLoader:
-    """Load documents from context folder."""
+    """Carrega documentos de diversos formatos."""
 
     SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".doc", ".txt", ".md"}
 
@@ -25,13 +21,12 @@ class DocumentLoader:
         self.context_path = Path(context_path or "./context")
         self.context_path.mkdir(exist_ok=True)
 
-        # Initialize readers
         self._pdf_reader = PDFReader()
         self._docx_reader = DocxReader()
         self._md_reader = MarkdownReader()
 
     def _read_text_file(self, file_path: Path) -> List[Document]:
-        """Read plain text files."""
+        """Lê arquivos de texto simples."""
         try:
             content = file_path.read_text(encoding="utf-8")
             return [Document(
@@ -47,7 +42,7 @@ class DocumentLoader:
             return []
 
     def _read_pdf(self, file_path: Path) -> List[Document]:
-        """Read PDF files."""
+        """Lê arquivos PDF."""
         try:
             documents = self._pdf_reader.load_data(file_path)
             for doc in documents:
@@ -62,7 +57,7 @@ class DocumentLoader:
             return []
 
     def _read_docx(self, file_path: Path) -> List[Document]:
-        """Read Word documents."""
+        """Lê documentos Word."""
         try:
             documents = self._docx_reader.load_data(file_path)
             for doc in documents:
@@ -77,7 +72,7 @@ class DocumentLoader:
             return []
 
     def _read_markdown(self, file_path: Path) -> List[Document]:
-        """Read Markdown files."""
+        """Lê arquivos Markdown."""
         try:
             documents = self._md_reader.load_data(file_path)
             for doc in documents:
@@ -92,7 +87,7 @@ class DocumentLoader:
             return []
 
     def load_file(self, file_path: Path) -> List[Document]:
-        """Load a single file based on its extension."""
+        """Carrega arquivo baseado na extensão."""
         extension = file_path.suffix.lower()
 
         if extension == ".pdf":
@@ -108,7 +103,7 @@ class DocumentLoader:
             return []
 
     def load_all(self) -> List[Document]:
-        """Load all supported documents from context folder."""
+        """Carrega todos os documentos da pasta context."""
         all_documents = []
 
         if not self.context_path.exists():
@@ -125,7 +120,7 @@ class DocumentLoader:
         return all_documents
 
     def get_stats(self) -> Dict[str, Any]:
-        """Get statistics about context folder."""
+        """Estatísticas da pasta de contexto."""
         stats = {
             "total_files": 0,
             "by_type": {},

@@ -1,10 +1,9 @@
-"""Inngest functions for background processing."""
+"""Funções Inngest para processamento em background."""
 
 import logging
 from typing import List, Dict, Any
 
 import inngest
-from inngest.experimental import ai
 
 from src.config import Config
 from src.scraper import WebsiteScraper
@@ -13,7 +12,6 @@ from src.vector_store import VectorStoreManager
 logger = logging.getLogger(__name__)
 
 
-# Initialize Inngest client
 inngest_client = inngest.Inngest(
     app_id=Config.INNGEST_APP_ID,
     logger=logging.getLogger("uvicorn"),
@@ -22,8 +20,8 @@ inngest_client = inngest.Inngest(
 
 
 class ScrapeEvent(inngest.Event):
-    """Event for triggering website scraping."""
-    name = "rag/scrape_website"
+    """Evento para iniciar scraping."""
+    name: str = "rag/scrape_website"
 
     def __init__(self, data: Dict[str, Any] = None):
         super().__init__(
@@ -33,8 +31,8 @@ class ScrapeEvent(inngest.Event):
 
 
 class IngestEvent(inngest.Event):
-    """Event for triggering content ingestion."""
-    name = "rag/ingest_content"
+    """Evento para iniciar ingestão."""
+    name: str = "rag/ingest_content"
 
     def __init__(self, data: Dict[str, Any] = None):
         super().__init__(
@@ -48,21 +46,19 @@ class IngestEvent(inngest.Event):
     trigger=inngest.TriggerEvent(event="rag/scrape_website"),
 )
 async def scrape_website_function(ctx: inngest.Context) -> Dict[str, Any]:
-    """Scrape the EM Vidros website and store content."""
+    """Scraping do site e armazenamento."""
     logger.info("Starting website scraping...")
 
     try:
-        # Get URL from event data or use default
         url = ctx.event.data.get("url", Config.WEBSITE_URL)
         max_pages = ctx.event.data.get("max_pages", Config.MAX_PAGES)
 
-        # Scrape website
         scraper = WebsiteScraper(base_url=url, max_pages=max_pages)
         scraped_content = await scraper.scrape()
 
         logger.info(f"Scraped {len(scraped_content)} pages from {url}")
 
-        # Trigger ingestion event
+        # Dispara evento de ingestão
         await ctx.step.send_event(
             "ingest-content",
             inngest.Event(
@@ -90,11 +86,10 @@ async def scrape_website_function(ctx: inngest.Context) -> Dict[str, Any]:
     trigger=inngest.TriggerEvent(event="rag/ingest_content"),
 )
 async def ingest_content_function(ctx: inngest.Context) -> Dict[str, Any]:
-    """Ingest scraped content into vector store."""
+    """Ingestão de conteúdo no banco vetorial."""
     logger.info("Starting content ingestion...")
 
     try:
-        # Get content from event data
         content = ctx.event.data.get("content", [])
 
         if not content:
@@ -104,15 +99,11 @@ async def ingest_content_function(ctx: inngest.Context) -> Dict[str, Any]:
                 "error": "No content provided",
             }
 
-        # Initialize vector store
         vector_store = VectorStoreManager()
-
-        # Add content to vector store
         documents_added = vector_store.add_web_content(content)
 
         logger.info(f"Ingested {documents_added} documents")
 
-        # Get stats
         stats = vector_store.get_stats()
 
         return {
@@ -134,18 +125,16 @@ async def ingest_content_function(ctx: inngest.Context) -> Dict[str, Any]:
     trigger=inngest.TriggerEvent(event="rag/clear_and_rescrape"),
 )
 async def clear_and_rescrape_function(ctx: inngest.Context) -> Dict[str, Any]:
-    """Clear vector store and rescrape website."""
+    """Limpa banco e refaz scraping."""
     logger.info("Starting clear and rescrape process...")
 
     try:
-        # Clear vector store
         vector_store = VectorStoreManager()
         cleared = vector_store.clear_collection()
 
         if not cleared:
             logger.warning("Failed to clear vector store")
 
-        # Trigger scraping
         url = ctx.event.data.get("url", Config.WEBSITE_URL)
         max_pages = ctx.event.data.get("max_pages", Config.MAX_PAGES)
 
@@ -171,7 +160,6 @@ async def clear_and_rescrape_function(ctx: inngest.Context) -> Dict[str, Any]:
         }
 
 
-# List of all functions to serve
 inngest_functions = [
     scrape_website_function,
     ingest_content_function,
@@ -180,7 +168,7 @@ inngest_functions = [
 
 
 def trigger_scrape(url: str = None, max_pages: int = None) -> None:
-    """Trigger a scrape event (for manual triggering)."""
+    """Dispara evento de scraping manualmente."""
     import asyncio
 
     async def _send():

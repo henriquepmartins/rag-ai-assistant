@@ -1,4 +1,4 @@
-"""Session memory storage using SQLite."""
+"""Armazenamento de sessões em SQLite."""
 
 import json
 import logging
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class SessionMemory:
-    """SQLite-based session memory for chat history."""
+    """Gerencia histórico de conversas usando SQLite."""
 
     def __init__(self, db_path: str = None):
         self.db_path = db_path or Config.SQLITE_DB_PATH
@@ -21,7 +21,7 @@ class SessionMemory:
 
     @contextmanager
     def _get_connection(self):
-        """Context manager for database connections."""
+        """Contexto seguro para conexões com o banco."""
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         try:
@@ -30,7 +30,7 @@ class SessionMemory:
             conn.close()
 
     def _init_db(self):
-        """Initialize the database schema."""
+        """Cria tabelas se não existirem."""
         with self._get_connection() as conn:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS sessions (
@@ -62,7 +62,7 @@ class SessionMemory:
             logger.info("Database initialized successfully")
 
     def create_session(self, session_id: str, metadata: Dict[str, Any] = None) -> bool:
-        """Create a new chat session."""
+        """Cria nova sessão de chat."""
         try:
             with self._get_connection() as conn:
                 conn.execute(
@@ -86,16 +86,16 @@ class SessionMemory:
         content: str,
         metadata: Dict[str, Any] = None
     ) -> bool:
-        """Add a message to a session."""
+        """Adiciona mensagem à sessão."""
         try:
             with self._get_connection() as conn:
-                # Ensure session exists
+                # Garante que sessão existe
                 conn.execute(
                     "INSERT OR IGNORE INTO sessions (session_id) VALUES (?)",
                     (session_id,)
                 )
 
-                # Add message
+                # Insere mensagem
                 conn.execute(
                     """
                     INSERT INTO messages (session_id, role, content, metadata)
@@ -104,7 +104,7 @@ class SessionMemory:
                     (session_id, role, content, json.dumps(metadata) if metadata else None)
                 )
 
-                # Update session timestamp
+                # Atualiza timestamp da sessão
                 conn.execute(
                     """
                     UPDATE sessions SET updated_at = CURRENT_TIMESTAMP
@@ -124,7 +124,7 @@ class SessionMemory:
         session_id: str,
         limit: int = None
     ) -> List[Dict[str, Any]]:
-        """Get chat history for a session."""
+        """Recupera histórico de mensagens."""
         limit = limit or Config.MAX_CHAT_HISTORY
 
         try:
@@ -157,7 +157,7 @@ class SessionMemory:
             return []
 
     def get_session(self, session_id: str) -> Optional[Dict[str, Any]]:
-        """Get session details."""
+        """Busca dados da sessão."""
         try:
             with self._get_connection() as conn:
                 cursor = conn.execute(
@@ -183,7 +183,7 @@ class SessionMemory:
             return None
 
     def list_sessions(self, limit: int = 100) -> List[Dict[str, Any]]:
-        """List all sessions."""
+        """Lista todas as sessões."""
         try:
             with self._get_connection() as conn:
                 cursor = conn.execute(
@@ -211,7 +211,7 @@ class SessionMemory:
             return []
 
     def delete_session(self, session_id: str) -> bool:
-        """Delete a session and all its messages."""
+        """Remove sessão e mensagens."""
         try:
             with self._get_connection() as conn:
                 conn.execute(
@@ -226,7 +226,7 @@ class SessionMemory:
             return False
 
     def clear_old_sessions(self, days: int = 30) -> int:
-        """Clear sessions older than specified days."""
+        """Remove sessões inativas."""
         try:
             with self._get_connection() as conn:
                 cursor = conn.execute(

@@ -1,4 +1,4 @@
-"""Web scraper module for EM Vidros website."""
+"""Web scraper para o site EM Vidros."""
 
 import asyncio
 import logging
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class WebsiteScraper:
-    """Scraper for EM Vidros website content."""
+    """Extrai conteúdo do site EM Vidros."""
 
     def __init__(self, base_url: str = None, max_pages: int = None, delay: float = None):
         self.base_url = base_url or Config.WEBSITE_URL
@@ -24,19 +24,16 @@ class WebsiteScraper:
         self.scraped_content: List[Dict[str, Any]] = []
 
     def _is_valid_url(self, url: str) -> bool:
-        """Check if URL belongs to the same domain and is valid."""
+        """Valida se URL pertence ao domínio e é acessível."""
         parsed_base = urlparse(self.base_url)
         parsed_url = urlparse(url)
 
-        # Must be same domain
         if parsed_url.netloc != parsed_base.netloc:
             return False
 
-        # Skip non-HTTP protocols
         if parsed_url.scheme not in ("http", "https"):
             return False
 
-        # Skip common non-content URLs
         skip_patterns = [
             ".pdf", ".jpg", ".jpeg", ".png", ".gif", ".css", ".js",
             ".zip", ".tar", ".gz", ".mp4", ".mp3", ".avi",
@@ -47,12 +44,12 @@ class WebsiteScraper:
         return not any(pattern in url_lower for pattern in skip_patterns)
 
     def _extract_text(self, soup: BeautifulSoup, url: str) -> str:
-        """Extract meaningful text content from BeautifulSoup object."""
-        # Remove script and style elements
+        """Extrai texto relevante da página."""
+        # Remove elementos não relevantes
         for script in soup(["script", "style", "nav", "footer", "header"]):
             script.decompose()
 
-        # Try to find main content areas
+        # Busca área principal de conteúdo
         main_content = (
             soup.find("main") or
             soup.find("article") or
@@ -66,12 +63,12 @@ class WebsiteScraper:
         else:
             text = soup.get_text(separator="\n", strip=True)
 
-        # Clean up the text
+        # Limpa texto
         lines = [line.strip() for line in text.split("\n") if line.strip()]
         return "\n".join(lines)
 
     def _extract_links(self, soup: BeautifulSoup, current_url: str) -> List[str]:
-        """Extract all valid links from the page."""
+        """Extrai links válidos da página."""
         links = []
         for anchor in soup.find_all("a", href=True):
             href = anchor["href"]
@@ -81,24 +78,21 @@ class WebsiteScraper:
         return links
 
     def _extract_metadata(self, soup: BeautifulSoup, url: str) -> Dict[str, Any]:
-        """Extract metadata from the page."""
+        """Extrai metadados da página."""
         metadata = {
             "url": url,
             "title": "",
             "description": "",
         }
 
-        # Extract title
         title_tag = soup.find("title")
         if title_tag:
             metadata["title"] = title_tag.get_text(strip=True)
 
-        # Extract meta description
         meta_desc = soup.find("meta", attrs={"name": "description"})
         if meta_desc and meta_desc.get("content"):
             metadata["description"] = meta_desc["content"]
 
-        # Extract Open Graph description as fallback
         og_desc = soup.find("meta", attrs={"property": "og:description"})
         if og_desc and og_desc.get("content") and not metadata["description"]:
             metadata["description"] = og_desc["content"]
@@ -106,7 +100,7 @@ class WebsiteScraper:
         return metadata
 
     async def _fetch_page(self, session: aiohttp.ClientSession, url: str) -> tuple:
-        """Fetch a single page and return content."""
+        """Busca página e retorna conteúdo."""
         try:
             async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as response:
                 if response.status == 200:
@@ -120,17 +114,17 @@ class WebsiteScraper:
             return url, None
 
     async def scrape(self) -> List[Dict[str, Any]]:
-        """Scrape the website starting from base_url."""
+        """Inicia scraping a partir da URL base."""
         logger.info(f"Starting scrape of {self.base_url}")
 
         async with aiohttp.ClientSession() as session:
             urls_to_visit = [self.base_url]
 
             while urls_to_visit and len(self.visited_urls) < self.max_pages:
-                batch = urls_to_visit[:5]  # Process 5 URLs at a time
+                batch = urls_to_visit[:5]
                 urls_to_visit = urls_to_visit[5:]
 
-                # Fetch pages concurrently
+                # Busca páginas em paralelo
                 tasks = [self._fetch_page(session, url) for url in batch]
                 results = await asyncio.gather(*tasks)
 
@@ -141,12 +135,11 @@ class WebsiteScraper:
                     self.visited_urls.add(url)
                     soup = BeautifulSoup(html, "html.parser")
 
-                    # Extract content
                     text = self._extract_text(soup, url)
                     metadata = self._extract_metadata(soup, url)
                     links = self._extract_links(soup, url)
 
-                    if text and len(text) > 100:  # Only save substantial content
+                    if text and len(text) > 100:
                         self.scraped_content.append({
                             **metadata,
                             "content": text,
@@ -154,7 +147,7 @@ class WebsiteScraper:
                         })
                         logger.info(f"Scraped: {url} ({len(text)} chars)")
 
-                    # Add new URLs to visit
+                    # Adiciona novas URLs
                     for link in links:
                         if link not in self.visited_urls and link not in urls_to_visit:
                             urls_to_visit.append(link)
@@ -166,11 +159,11 @@ class WebsiteScraper:
         return self.scraped_content
 
     def scrape_sync(self) -> List[Dict[str, Any]]:
-        """Synchronous wrapper for scrape method."""
+        """Wrapper síncrono para scrape."""
         return asyncio.run(self.scrape())
 
 
 def scrape_website(url: str = None) -> List[Dict[str, Any]]:
-    """Convenience function to scrape a website."""
+    """Função auxiliar para scraping."""
     scraper = WebsiteScraper(base_url=url)
     return scraper.scrape_sync()
