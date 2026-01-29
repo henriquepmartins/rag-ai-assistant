@@ -1,48 +1,49 @@
-# EM Vidros AI Assistant
+# ai assistant
 
-Assistente conversacional baseado em RAG para a EM Vidros. Desenvolvido com Python, LlamaIndex e Qdrant.
+assistente conversacional baseado em RAG para a EM Vidros. Desenvolvido com Python, LlamaIndex e Qdrant.
 
-## Arquitetura
+## arquitetura
 
 ```
-Streamlit UI → FastAPI → RAG Engine (LlamaIndex)
+streamlit ui → fastapi → rag engine (llamaindex)
                       ↓
-        Qdrant (vetores) + SQLite (sessões) + OpenRouter (LLM)
+        qdrant (vetores) + sqlite (sessões) + openrouter (llm)
 ```
 
-**Componentes Principais**
+**componentes principais**
 
-- **RAG Engine**: LlamaIndex com CondensePlusContextChatEngine para respostas contextuais
-- **Vector Store**: Qdrant para busca semântica com embeddings OpenAI
-- **Memória**: SQLite para persistência de sessões
-- **LLM**: API OpenRouter (modelo configurável)
-- **Web Scraping**: Crawler assíncrono para ingestão de conteúdo do site
+- **rag engine**: llamaindex + condense context chat para respostas diretas
+- **vetor store**: qdrant para busca semântica (embeddings openai por padrão)
+- **memória**: sqlite para persistência de sessões
+- **llm**: openrouter (modelo configurável)
+- **scraper**: crawler assíncrono para ingestão de conteúdo
 
-## Início Rápido
 
-**Pré-requisitos**: Python 3.11+, [uv](https://github.com/astral-sh/uv), Qdrant
+## instalação 
+
+requisitos: python 3.11+, `uv`, qdrant
 
 ```bash
-# Instalação
+# instalar dependências
 uv sync
 
-# Configuração
+# copiar e ajustar env
 cp .env.example .env
-# Edite .env com sua OPENROUTER_API_KEY
+# preencha OPENROUTER_API_KEY no .env
 
-# Iniciar Qdrant
+# iniciar qdrant
 docker run -p 6333:6333 qdrant/qdrant
 
-# Executar API
+# executar api
 uv run uvicorn api:app --reload
 
-# Executar UI (novo terminal)
+# executar ui (novo terminal)
 uv run streamlit run streamlit_app.py
 ```
 
-## Configuração
+## configuração
 
-Variáveis de ambiente no `.env`:
+defina no `.env`:
 
 ```env
 OPENROUTER_API_KEY=sk-or-v1-...
@@ -50,31 +51,29 @@ MODEL_NAME=google/gemini-2.0-flash-exp:free
 QDRANT_URL=http://localhost:6333
 ```
 
-## API
+## endpoints
 
-| Método | Endpoint  | Descrição                           |
-| ------ | --------- | ----------------------------------- |
-| POST   | `/chat`   | Endpoint conversacional com memória |
-| POST   | `/query`  | Consulta pontual sem histórico      |
-| GET    | `/health` | Verificação de saúde                |
-| GET    | `/stats`  | Estatísticas do sistema             |
+- `POST /chat` — conversação com memória de sessão
+- `POST /query` — consulta pontual (sem histórico)
+- `GET /health` — checagem de saúde
+- `GET /stats` — estatísticas do sistema
 
-## Documentos de Contexto
+## documentos de contexto
 
-Adicione arquivos na pasta `context/` (PDF, DOCX, TXT, MD). Indexados automaticamente na inicialização.
+adicione arquivos na pasta `context/` (pdf, docx, txt, md). indexados automaticamente na inicialização.
 
-## Estrutura do Projeto
+## estrutura do projeto
 
 ```
 src/
-  config.py            # Configuração de ambiente
-  rag_engine.py        # Lógica RAG principal
-  vector_store.py      # Integração com Qdrant
-  memory.py            # Armazenamento de sessões SQLite
-  query_router.py      # Detecção de intenção
-  scraper.py           # Crawler web
-  document_loader.py   # Ingestão de arquivos
-  inngest_functions.py # Jobs em background
-api.py                 # Aplicação FastAPI
-streamlit_app.py       # Interface web
+  config.py            # configuração de ambiente
+  rag_engine.py        # lógica principal do rag
+  vector_store.py      # integração com qdrant
+  memory.py            # armazenamento de sessões (sqlite)
+  query_router.py      # roteamento / detecção de intenção
+  scraper.py           # crawler web
+  document_loader.py   # ingestão de arquivos
+  inngest_functions.py # jobs em background
+api.py                 # aplicação fastapi
+streamlit_app.py       # interface streamlit
 ```
